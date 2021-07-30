@@ -4,12 +4,14 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.reflections.Reflections;
-import perftest.annotation.IgnoreTest;
+import perftest.annotation.Order;
 import perftest.tests.PerfTest;
 
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -19,7 +21,7 @@ public class ChatTriggerPerfTest {
   private static final String TIME_TAKEN = "Time taken for - %s : %d ms%n";
 
   public static void main(String[] args) {
-    final Set<PerfTest> perfTests = getPerfTests();
+    final List<PerfTest> perfTests = getPerfTests();
     try {
       runTests(perfTests);
     } catch (Exception e) {
@@ -29,15 +31,13 @@ public class ChatTriggerPerfTest {
     }
   }
 
-  private static Set<PerfTest> getPerfTests() {
+  private static List<PerfTest> getPerfTests() {
     final Reflections reflections = new Reflections("perftest.tests");
     final Set<Class<? extends PerfTest>> perfTestImplClasses =
         reflections.getSubTypesOf(PerfTest.class);
     return perfTestImplClasses.stream().map(perfTestImplClass -> {
       PerfTest perfTest = null;
-      if (perfTestImplClass.isAnnotationPresent(IgnoreTest.class)) {
-        System.out.printf("Ignoring %s%n", perfTestImplClass.getSimpleName());
-      } else {
+      if (perfTestImplClass.isAnnotationPresent(Order.class)) {
         try {
           perfTest = perfTestImplClass.getConstructor(WebDriver.class).newInstance(DRIVER);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
@@ -45,10 +45,12 @@ public class ChatTriggerPerfTest {
         }
       }
       return perfTest;
-    }).filter(Objects::nonNull).collect(Collectors.toSet());
+    }).filter(Objects::nonNull).sorted(Comparator
+        .comparingInt((perfTest -> perfTest.getClass().getAnnotation(Order.class).value())))
+        .collect(Collectors.toUnmodifiableList());
   }
 
-  private static void runTests(Set<PerfTest> perfTests) {
+  private static void runTests(List<PerfTest> perfTests) {
     perfTests.forEach(ChatTriggerPerfTest::runTest);
   }
 

@@ -7,6 +7,8 @@ import java.lang.annotation.Target;
 
 @Retention(value = RetentionPolicy.RUNTIME)
 @Target(value = {ElementType.TYPE})
-public @interface IgnoreTest {
+public @interface Order {
+
+  int value() default Integer.MAX_VALUE;
 
 }
